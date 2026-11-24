@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Keyword Dictionary — 1825 Djogjakarta Archive</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { background-color: #1a1a1a; color: #e0e0e0; font-family: Arial, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; line-height: 1.65; }
+        .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px; position: sticky; top: 0; background: #1a1a1a; padding-top: 10px; z-index: 10; }
+        .btn { background: #2d2d2d; color: #e0e0e0; border: 1px solid #444; border-radius: 5px; padding: 8px 14px; text-decoration: none; font-size: 0.9rem; cursor: pointer; }
+        .btn:hover { background: #4a9eff; color: #ffffff; border-color: #4a9eff; }
+        .search-wrap { display: flex; align-items: center; gap: 10px; margin-left: auto; flex: 1 1 260px; justify-content: flex-end; }
+        #dict-search { background: #222; color: #e0e0e0; border: 1px solid #555; border-radius: 5px; padding: 8px 12px; font-size: 0.92rem; width: 100%; max-width: 340px; }
+        #dict-search:focus { outline: none; border-color: #4a9eff; }
+        #search-status { color: #9a9a9a; font-size: 0.85rem; white-space: nowrap; }
+        .section-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; padding: 12px 14px; background: #222; border: 1px solid #333; border-radius: 6px; }
+        .section-pill { background: #2d2d2d; color: #cfe3ff; border: 1px solid #444; border-radius: 16px; padding: 4px 12px; font-size: 0.84rem; text-decoration: none; }
+        .section-pill:hover { background: #4a9eff; color: #fff; border-color: #4a9eff; }
+        #dict-content h1, #dict-content h2, #dict-content h3 { color: #ffffff; scroll-margin-top: 76px; }
+        #dict-content h1 { border-bottom: 2px solid #4a9eff; padding-bottom: 8px; }
+        #dict-content h2 { border-bottom: 1px solid #444; padding-bottom: 6px; margin-top: 28px; color: #7bb9ff; }
+        #dict-content h3 { color: #e5c07b; margin-top: 20px; }
+        #dict-content hr { border: 0; border-top: 1px solid #333; margin: 24px 0; }
+        #dict-content ul, #dict-content ol { padding-left: 24px; }
+        #dict-content li { margin-bottom: 6px; padding: 2px 6px; border-radius: 4px; scroll-margin-top: 84px; }
+        #dict-content li strong { color: #ffffff; }
+        #dict-content li em { color: #b8c7d9; }
+        .line-anchor { display: inline-block; width: 0; height: 0; overflow: hidden; scroll-margin-top: 90px; }
+        .anchor-highlight { background-color: rgba(74, 158, 255, 0.24) !important; outline: 1px solid #4a9eff; transition: background-color 0.4s ease; }
+        .hidden-by-filter { display: none !important; }
+        .render-error { background: #2a1414; border: 1px solid #ff6b6b55; border-radius: 6px; padding: 1.25rem; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <a class="btn" href="index.html">← Index</a>
+        <a class="btn" href="transcriptions.html">Transcriptions</a>
+        <a class="btn" href="full.html">Full Documentation</a>
+        <div class="search-wrap">
+            <input type="search" id="dict-search" placeholder="Search names, places, terms…" aria-label="Search keyword dictionary">
+            <span id="search-status">Loading…</span>
+        </div>
+    </div>
+
+    <div id="section-nav" class="section-nav" style="display:none;"></div>
+    <div id="dict-content">Loading Expanded Keyword Index…</div>
+
+    <script src="marked.min.js" defer></script>
+    <script>
+(function () {
+    "use strict";
+
+    const SOURCE_FILE = "39_Expanded_Keyword_Index.md";
+    const contentEl = document.getElementById("dict-content");
+    const navEl = document.getElementById("section-nav");
+    const searchEl = document.getElementById("dict-search");
+    const statusEl = document.getElementById("search-status");
+
+    function injectLineAnchors(mdText) {
+        const lines = mdText.split(/\r?\n/);
+        return lines.map((line, idx) => {
+            const lineNum = idx + 1;
+            const anchor = `<span id="L${lineNum}" class="line-anchor"></span>`;
+            // Heading line: inject after # prefix
+            const hMatch = line.match(/^(\s*#{1,6}\s+)(.*)$/);
+            if (hMatch) {
+                return `${hMatch[1]}${anchor}${hMatch[2]}`;
+            }
+            // Bullet or numbered list line: inject after marker
+            const lMatch = line.match(/^(\s*(?:[*+-]|\d+\.)\s+)(.*)$/);
+            if (lMatch) {
+                return `${lMatch[1]}${anchor}${lMatch[2]}`;
+            }
+            return line;
+        }).join("\n");
+    }
+
+    function buildSectionNav() {
+        const headings = contentEl.querySelectorAll("h2");
+        if (!headings.length) return;
+        navEl.innerHTML = "";
+        headings.forEach((h, i) => {
+            if (!h.id) h.id = `sec-${i + 1}`;
+            const a = document.createElement("a");
+            a.className = "section-pill";
+            a.href = `#${h.id}`;
+            a.textContent = h.textContent.trim();
+            navEl.appendChild(a);
+        });
+        navEl.style.display = "flex";
+    }
+
+    function highlightTargetFromHash() {
+        contentEl.querySelectorAll(".anchor-highlight").forEach(el => {
+            el.classList.remove("anchor-highlight");
+        });
+
+        const hash = location.hash ? location.hash.slice(1) : "";
+        if (!hash) return;
+
+        // Clear filter if target is hidden
+        if (searchEl.value.trim()) {
+            searchEl.value = "";
+            filterDictionary("");
+        }
+
+        let target = document.getElementById(hash) || document.getElementById(hash.toUpperCase());
+        if (!target) return;
+
+        const container = target.closest("li, h1, h2, h3, h4, p") || target;
+        container.classList.add("anchor-highlight");
+        container.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function filterDictionary(query) {
+        const q = query.trim().toLowerCase();
+        const allItems = Array.from(contentEl.querySelectorAll("li"));
+
+        if (!q) {
+            contentEl.querySelectorAll(".hidden-by-filter").forEach(el => el.classList.remove("hidden-by-filter"));
+            statusEl.textContent = `${allItems.length} entries`;
+            return;
+        }
+
+        // First mark all li elements based on own text match
+        allItems.forEach(li => li.classList.add("hidden-by-filter"));
+
+        let matchCount = 0;
+        allItems.forEach(li => {
+            // Get direct text (excluding nested lists so parent match logic is clean)
+            const clone = li.cloneNode(true);
+            clone.querySelectorAll("ul, ol").forEach(sub => sub.remove());
+            const ownText = clone.textContent.toLowerCase();
+            const fullText = li.textContent.toLowerCase();
+
+            if (ownText.includes(q)) {
+                li.classList.remove("hidden-by-filter");
+                matchCount++;
+                // Show nested child items if parent heading itself matched
+                li.querySelectorAll("li").forEach(child => child.classList.remove("hidden-by-filter"));
+                // Ensure ancestor li items stay visible
+                let parent = li.parentElement ? li.parentElement.closest("li") : null;
+                while (parent) {
+                    parent.classList.remove("hidden-by-filter");
+                    parent = parent.parentElement ? parent.parentElement.closest("li") : null;
+                }
+            } else if (!fullText.includes(q)) {
+                li.classList.add("hidden-by-filter");
+            }
+        });
+
+        // Hide headings (h2, h3) and hr that have no visible li elements before next heading of same/higher level
+        const children = Array.from(contentEl.children);
+        children.forEach(el => {
+            if (el.tagName === "UL" || el.tagName === "OL") {
+                const hasVisibleLi = !!el.querySelector("li:not(.hidden-by-filter)");
+                el.classList.toggle("hidden-by-filter", !hasVisibleLi);
+            }
+        });
+
+        children.forEach((el, idx) => {
+            if (el.tagName === "H3") {
+                let hasContent = false;
+                for (let j = idx + 1; j < children.length; j++) {
+                    const next = children[j];
+                    if (next.tagName === "H2" || next.tagName === "H3" || next.tagName === "HR") break;
+                    if ((next.tagName === "UL" || next.tagName === "OL") && !next.classList.contains("hidden-by-filter")) {
+                        hasContent = true;
+                        break;
+                    }
+                }
+                el.classList.toggle("hidden-by-filter", !hasContent);
+            }
+        });
+
+        children.forEach((el, idx) => {
+            if (el.tagName === "H2") {
+                let hasContent = false;
+                for (let j = idx + 1; j < children.length; j++) {
+                    const next = children[j];
+                    if (next.tagName === "H2" || next.tagName === "HR") break;
+                    if ((next.tagName === "UL" || next.tagName === "OL") && !next.classList.contains("hidden-by-filter")) {
+                        hasContent = true;
+                        break;
+                    }
+                }
+                el.classList.toggle("hidden-by-filter", !hasContent);
+            }
+        });
+
+        statusEl.textContent = `${matchCount} matches`;
+    }
+
+    async function init() {
+        try {
+            const res = await fetch(SOURCE_FILE, { cache: "no-store" });
+            if (!res.ok) throw new Error(`Failed to load ${SOURCE_FILE} (${res.status})`);
+            const rawMd = await res.text();
+            if (typeof marked === "undefined") throw new Error("marked.min.js did not load.");
+
+            marked.setOptions({ gfm: true, breaks: false });
+            const anchoredMd = injectLineAnchors(rawMd);
+            contentEl.innerHTML = marked.parse(anchoredMd);
+
+            buildSectionNav();
+
+            const allCount = contentEl.querySelectorAll("li").length;
+            statusEl.textContent = `${allCount} entries`;
+
+            const params = new URLSearchParams(location.search);
+            const qParam = params.get("q");
+            if (qParam) {
+                searchEl.value = qParam;
+                filterDictionary(qParam);
+            }
+
+            highlightTargetFromHash();
+        } catch (err) {
+            statusEl.textContent = "Error";
+            contentEl.innerHTML = `<div class="render-error"><h2>Error Loading Dictionary</h2><pre>${err.message}</pre></div>`;
+        }
+    }
+
+    searchEl.addEventListener("input", () => filterDictionary(searchEl.value));
+    window.addEventListener("hashchange", highlightTargetFromHash);
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }
+})();
+    </script>
+</body>
+</html>
